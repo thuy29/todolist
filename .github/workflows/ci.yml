@@ -22,8 +22,10 @@ jobs:
       working-directory: ./backend
       run: npm install
 
-    - name: Fix Permissions for All Bin Files
-      run: chmod -R +x ./node_modules/.bin
+    - name: Fix Jest Permissions
+      working-directory: ./backend
+      run: chmod +x ./node_modules/.bin/jest
+
 
     - name: Run backend tests
       working-directory: ./backend
