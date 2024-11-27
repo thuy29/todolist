@@ -1,0 +1,55 @@
+name: CD - Dev into main
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  merge-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+
+    - name: Install dependencies for backend
+      working-directory: ./backend
+      run: npm install
+
+    - name: Fix Permissions for All Bin Files
+      run: chmod -R +x ./node_modules/.bin
+
+    - name: Run backend tests
+      working-directory: ./backend
+      run: npm test
+
+    - name: Install dependencies for frontend
+      working-directory: ./frontend
+      run: npm install
+
+    - name: Run frontend tests
+      working-directory: ./frontend
+      run: npm test
+
+    - name: Merge dev into main branch
+      uses: jessesquires/gh-action-merge-release@v1
+      with:
+        target-branch: main
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build Docker images
+      run: docker-compose build
+
+    - name: Push docker images
+      env:
+        DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      run: |
+        echo $DOCKERHUB_TOKEN | docker login -u $DOCKERHUB_USERNAME --password-stdin
+        docker-compose push
