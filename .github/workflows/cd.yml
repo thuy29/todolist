@@ -1,0 +1,58 @@
+name: CD - Dev into main
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  merge-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+
+    - name: Install dependencies for backend
+      working-directory: ./backend
+      run: npm install
+
+    - name: Backend tests
+      working-directory: ./backend
+      run: npm test
+
+    - name: Install dependencies for frontend
+      working-directory: ./frontend
+      run: npm install
+
+    - name: Frontend tests
+      working-directory: ./frontend
+      run: npm test
+
+    - name: Merge Dev into Main
+      if: success()
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git fetch origin main
+        git checkout main
+        git merge dev --no-ff -m "Merge branch 'dev' into 'main'"
+        git push origin main
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build Docker Images
+      run: docker-compose build
+
+    - name: Push Docker Images
+      env:
+        DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      run: |
+        echo $DOCKERHUB_TOKEN | docker login -u $DOCKERHUB_USERNAME --password-stdin
+        docker-compose push
